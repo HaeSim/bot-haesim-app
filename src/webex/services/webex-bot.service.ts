@@ -8,6 +8,7 @@ import {
   WebexFramework,
   WebhookData,
   MessageDetails,
+  PersonDetails,
 } from '../interfaces/webex-bot.interface';
 import { CommandRegistryService } from './command-registry.service';
 import { GreetingCommand } from '../commands/greeting.command';
@@ -147,13 +148,26 @@ export class WebexBotService implements OnModuleInit {
       const messageDetails = await this.getMessageDetails(webhookData.data.id);
       this.logger.log(`메시지 내용: ${messageDetails.text}`);
 
+      // 사용자 정보 가져오기
+      const personDetails = await this.getPersonDetails(
+        webhookData.data.personId,
+      );
+
+      // 명령어 처리 및 응답 생성
+      const responseText: string = this.commandRegistry.processCommand(
+        messageDetails.text,
+        webhookData.data.roomId,
+        webhookData.data.personEmail,
+        personDetails.displayName,
+      );
+
       // Webex API를 사용하여 응답 메시지 전송
       const token = this.configService.get<string>('BOT_ACCESS_TOKEN');
       await axios.post(
         `${this.apiUrl}/messages`,
         {
           roomId: webhookData.data.roomId,
-          text: this.commandRegistry.generateResponse(messageDetails.text),
+          text: responseText,
         },
         {
           headers: {
@@ -192,6 +206,26 @@ export class WebexBotService implements OnModuleInit {
       const err = error as Error;
       this.logger.error(`메시지 상세 정보 가져오기 실패: ${err.message}`);
       throw error;
+    }
+  }
+
+  // 사용자 정보 가져오기 메서드 수정
+  async getPersonDetails(personId: string): Promise<PersonDetails> {
+    try {
+      const token = this.configService.get<string>('BOT_ACCESS_TOKEN');
+      const response = await axios.get<PersonDetails>(
+        `${this.apiUrl}/people/${personId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const err = error as Error;
+      this.logger.error(`사용자 정보 가져오기 실패: ${err.message}`);
+      throw new Error(`사용자 정보 가져오기 실패: ${err.message}`);
     }
   }
 }

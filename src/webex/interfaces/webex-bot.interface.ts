@@ -2,6 +2,7 @@ export interface Bot {
   say: (message: any) => Promise<any>;
   room: {
     title: string;
+    id?: string;
   };
 }
 
@@ -55,4 +56,16 @@ export interface WebexFramework {
     helpText?: string,
     priority?: number,
   ) => void;
+}
+
+export interface PersonDetails {
+  id: string;
+  emails: string[];
+  displayName: string;
+  firstName?: string;
+  lastName?: string;
+  avatar?: string;
+  orgId?: string;
+  created?: string;
+  // 필요한 다른 속성들 추가
 }
