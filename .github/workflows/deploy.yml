@@ -26,7 +26,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}:latest
+          tags: ghcr.io/${{ github.repository_owner }}:latest
           target: production
 
       - name: Deploy to OCI instance
@@ -37,7 +37,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             # Pull the latest image
-            docker pull ghcr.io/${{ github.repository }}:latest
+            docker pull ghcr.io/${{ github.repository_owner }}:latest
 
             # Stop the existing container if it exists
             docker stop bot-haesim-app || true
@@ -47,7 +47,7 @@ jobs:
             docker run -d --name bot-haesim-app \
               -p 3000:3000 \
               --restart unless-stopped \
-              ghcr.io/${{ github.repository }}:latest
+              ghcr.io/${{ github.repository_owner }}:latest
 
             # Cleanup unused images
             docker image prune -a -f --filter "until=24h"
