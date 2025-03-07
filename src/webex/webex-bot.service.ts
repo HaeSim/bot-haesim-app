@@ -25,10 +25,25 @@ interface Trigger {
 }
 
 interface WebhookData {
+  id: string;
+  name: string;
+  targetUrl: string;
+  resource: string;
+  event: string;
+  orgId: string;
+  createdBy: string;
+  appId: string;
+  ownedBy: string;
+  status: string;
+  created: string;
+  actorId: string;
   data: {
     id: string;
     personId: string;
     roomId: string;
+    roomType: string;
+    personEmail: string;
+    created: string;
   };
 }
 
@@ -154,10 +169,57 @@ export class WebexBotService implements OnModuleInit {
     );
   }
 
-  processWebhook(webhookData: WebhookData): Promise<any> {
-    // async 키워드 제거
+  async processWebhook(webhookData: WebhookData): Promise<any> {
     this.logger.log(`웹훅 처리: ${JSON.stringify(webhookData)}`);
-    return Promise.resolve({ status: 'success' });
+
+    try {
+      // 봇 자신이 보낸 메시지는 처리하지 않음
+      const botId = this.configService.get<string>('BOT_ID');
+      if (webhookData.data.personId === botId) {
+        return { status: 'ignored_bot_message' };
+      }
+
+      // 메시지 ID를 사용하여 메시지 세부 정보 조회
+      const messageDetails = await this.getMessageDetails(webhookData.data.id);
+      this.logger.log(`메시지 내용: ${messageDetails.text}`);
+
+      // Webex API를 사용하여 응답 메시지 전송
+      const token = this.configService.get<string>('BOT_ACCESS_TOKEN');
+      await axios.post(
+        `${this.apiUrl}/messages`,
+        {
+          roomId: webhookData.data.roomId,
+          text: this.generateResponse(messageDetails.text),
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      return { status: 'success' };
+    } catch (error: unknown) {
+      const err = error as Error;
+      this.logger.error(`웹훅 처리 중 오류 발생: ${err.message}`);
+      throw error;
+    }
+  }
+
+  private generateResponse(message: string): string {
+    // 간단한 응답 로직
+    message = message.trim().toLowerCase();
+
+    if (message.includes('안녕')) {
+      return '안녕하세요! 무엇을 도와드릴까요?';
+    } else if (message.includes('도움말')) {
+      return '다음 명령어를 사용할 수 있습니다:\n- 안녕: 인사하기\n- 도움말: 도움말 보기\n- 시간: 현재 시간 확인하기';
+    } else if (message.includes('시간')) {
+      const now = new Date();
+      return `현재 시간은 ${now.toLocaleString('ko-KR')} 입니다.`;
+    } else {
+      return '죄송합니다. 이해하지 못했습니다. "도움말"을 입력하시면 사용 가능한 명령어를 확인할 수 있습니다.';
+    }
   }
 
   async getMessageDetails(messageId: string): Promise<MessageDetails> {
