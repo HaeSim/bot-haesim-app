@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
 
+# 권한 설정 추가
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
