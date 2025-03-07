@@ -40,11 +40,11 @@ jobs:
             docker pull ghcr.io/${{ github.repository }}:latest
 
             # Stop the existing container if it exists
-            docker stop bot-hasim-app || true
-            docker rm bot-hasim-app || true
+            docker stop bot-haesim-app || true
+            docker rm bot-haesim-app || true
 
             # Run the new container
-            docker run -d --name bot-hasim-app \
+            docker run -d --name bot-haesim-app \
               -p 3000:3000 \
               --restart unless-stopped \
               ghcr.io/${{ github.repository }}:latest
