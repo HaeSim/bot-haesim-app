@@ -215,12 +215,7 @@ export class WebexBotService implements OnModuleInit {
       this.logger.log(`메시지 룸 ID: ${webhookData.data.roomId}`);
       this.logger.log(`발신자 이메일: ${webhookData.data.personEmail}`);
 
-      // Framework가 이미 메시지를 처리하므로 여기서 직접 처리하지 않음
-      this.logger.log('메시지 처리를 Framework로 위임');
-      return { status: 'forwarded_to_framework' };
-
-      // 아래 코드 주석 처리 (기존 직접 응답 코드)
-      /*
+      // Framework가 제대로 처리하지 못하므로 직접 처리
       // 메시지 ID를 사용하여 메시지 세부 정보 조회
       const messageDetails = await this.getMessageDetails(webhookData.data.id);
       this.logger.log(`메시지 내용: ${messageDetails.text}`);
@@ -239,9 +234,8 @@ export class WebexBotService implements OnModuleInit {
           },
         },
       );
-      */
 
-      // return { status: 'success' };
+      return { status: 'success' };
     } catch (error: unknown) {
       const err = error as Error;
       this.logger.error(`웹훅 처리 중 오류 발생: ${err.message}`);
