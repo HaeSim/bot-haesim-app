@@ -54,11 +54,17 @@ jobs:
             docker stop bot-haesim-app || true
             docker rm bot-haesim-app || true
 
-            # Run the new container with platform 명시
+            # Run the new container with platform 명시 and environment variables
             docker run -d --name bot-haesim-app \
               --platform linux/arm64 \
               -p 3000:3000 \
               --restart unless-stopped \
+              -e PORT=3000 \
+              -e BOT_ACCESS_TOKEN="${{ secrets.BOT_ACCESS_TOKEN }}" \
+              -e DOMAIN_NAME="${{ secrets.DOMAIN_NAME }}" \
+              -e BOT_NAME="${{ secrets.BOT_NAME }}" \
+              -e BOT_USERNAME="${{ secrets.BOT_USERNAME }}" \
+              -e BOT_ID="${{ secrets.BOT_ID }}" \
               ghcr.io/${{ env.OWNER_LOWERCASE }}/${{ env.REPO_LOWERCASE }}:latest
 
             # Cleanup unused images
