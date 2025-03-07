@@ -38,6 +38,7 @@ jobs:
           push: true
           tags: ghcr.io/${{ env.OWNER_LOWERCASE }}/${{ env.REPO_LOWERCASE }}:latest
           target: production
+          platforms: linux/amd64,linux/arm64
 
       - name: Deploy to OCI instance
         uses: appleboy/ssh-action@master
@@ -46,15 +47,16 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Pull the latest image
-            docker pull ghcr.io/${{ env.OWNER_LOWERCASE }}/${{ env.REPO_LOWERCASE }}:latest
+            # Pull the latest image with platform 명시
+            docker pull --platform linux/arm64 ghcr.io/${{ env.OWNER_LOWERCASE }}/${{ env.REPO_LOWERCASE }}:latest
 
             # Stop the existing container if it exists
             docker stop bot-haesim-app || true
             docker rm bot-haesim-app || true
 
-            # Run the new container
+            # Run the new container with platform 명시
             docker run -d --name bot-haesim-app \
+              --platform linux/arm64 \
               -p 3000:3000 \
               --restart unless-stopped \
               ghcr.io/${{ env.OWNER_LOWERCASE }}/${{ env.REPO_LOWERCASE }}:latest
