@@ -1,3 +1,4 @@
+// Bot 관련 인터페이스
 export interface Bot {
   say: (message: any) => Promise<any>;
   room: {
@@ -67,5 +68,15 @@ export interface PersonDetails {
   avatar?: string;
   orgId?: string;
   created?: string;
-  // 필요한 다른 속성들 추가
 }
+
+// Command 인터페이스
+export interface Command {
+  pattern: string | RegExp;
+  execute: (bot: Bot, trigger: Trigger) => Promise<void | string>;
+  helpText: string;
+  priority: number;
+}
+
+// Command 팩토리 타입
+export type CommandFactory = () => Command;
