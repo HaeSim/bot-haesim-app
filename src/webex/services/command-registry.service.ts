@@ -76,13 +76,16 @@ export class CommandRegistryService implements OnModuleInit {
     return '죄송합니다. 이해하지 못했습니다. "도움말"을 입력하세요.';
   }
 
-  processCommand(
+  async processCommand(
     message: string,
     roomId: string,
     personEmail: string,
     personDisplayName: string,
-  ): string {
+  ): Promise<string> {
     message = message.trim().toLowerCase();
+    this.logger.log(
+      `명령어 처리 시작: "${message}" (사용자: ${personDisplayName})`,
+    );
 
     // 명령어 찾기
     for (const command of this.commands) {
@@ -93,13 +96,16 @@ export class CommandRegistryService implements OnModuleInit {
           message.includes(pattern.toLowerCase())) ||
         (pattern instanceof RegExp && pattern.test(message))
       ) {
+        this.logger.log(`일치하는 명령어 발견: ${command.getHelpText()}`);
+
         // 가상 봇 객체 생성 - Bot 인터페이스에 맞게 타입 지정
         const virtualBot: Bot = {
           say: (text: string | object): Promise<any> => {
-            // 실제 Promise를 반환하도록 수정
-            return Promise.resolve(
-              typeof text === 'string' ? text : JSON.stringify(text),
-            );
+            // 실제로 메시지를 반환하도록 수정
+            const response =
+              typeof text === 'string' ? text : JSON.stringify(text);
+            this.logger.log(`가상 봇 응답: ${response}`);
+            return Promise.resolve(response);
           },
           room: {
             id: roomId,
@@ -120,26 +126,31 @@ export class CommandRegistryService implements OnModuleInit {
         };
 
         try {
-          // 명령어 실행 결과 반환
-          const result = command.execute(virtualBot, virtualTrigger);
-          if (result instanceof Promise) {
-            // Promise를 반환하는 경우 기본 응답 제공
-            return `명령어 "${typeof pattern === 'string' ? pattern : '정규식 패턴'}"를 실행 중입니다.`;
-          }
-          return (
+          this.logger.log(`명령어 실행 중: ${command.getHelpText()}`);
+
+          // 명령어 실행 및 결과 대기
+          const result = await command.execute(virtualBot, virtualTrigger);
+
+          // 결과 처리
+          const response =
             (result as unknown as string) ||
-            `명령어 "${typeof pattern === 'string' ? pattern : '정규식 패턴'}"가 실행되었습니다.`
-          );
+            `명령어 "${typeof pattern === 'string' ? pattern : '정규식 패턴'}"가 실행되었습니다.`;
+
+          this.logger.log(`명령어 실행 완료: ${response}`);
+          return response;
         } catch (err) {
-          // 변수명 변경하여 사용하지 않는 변수 문제 해결
-          this.logger.error(
-            `명령어 실행 중 오류 발생: ${err instanceof Error ? err.message : '알 수 없는 오류'}`,
-          );
+          const errorMessage =
+            err instanceof Error ? err.message : '알 수 없는 오류';
+          this.logger.error(`명령어 실행 중 오류 발생: ${errorMessage}`);
+          if (err instanceof Error && err.stack) {
+            this.logger.error(`오류 스택: ${err.stack}`);
+          }
           return '명령어 실행 중 오류가 발생했습니다.';
         }
       }
     }
 
+    this.logger.log(`일치하는 명령어 없음: "${message}"`);
     return '죄송합니다. 이해하지 못했습니다. "도움말"을 입력하세요.';
   }
 }

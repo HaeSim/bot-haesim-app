@@ -152,14 +152,18 @@ export class WebexBotService implements OnModuleInit {
       const personDetails = await this.getPersonDetails(
         webhookData.data.personId,
       );
+      this.logger.log(
+        `사용자 정보: ${personDetails.displayName}(${webhookData.data.personEmail})`,
+      );
 
-      // 명령어 처리 및 응답 생성
-      const responseText: string = this.commandRegistry.processCommand(
+      // 명령어 처리 및 응답 생성 (비동기)
+      const responseText = await this.commandRegistry.processCommand(
         messageDetails.text,
         webhookData.data.roomId,
         webhookData.data.personEmail,
         personDetails.displayName,
       );
+      this.logger.log(`생성된 응답: ${responseText}`);
 
       // Webex API를 사용하여 응답 메시지 전송
       const token = this.configService.get<string>('BOT_ACCESS_TOKEN');
@@ -174,6 +178,9 @@ export class WebexBotService implements OnModuleInit {
             Authorization: `Bearer ${token}`,
           },
         },
+      );
+      this.logger.log(
+        `응답 메시지 전송 완료: ${responseText.substring(0, 50)}${responseText.length > 50 ? '...' : ''}`,
       );
 
       return { status: 'success' };
