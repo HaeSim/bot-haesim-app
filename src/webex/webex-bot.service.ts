@@ -9,7 +9,10 @@ import {
   WebhookData,
   MessageDetails,
   PersonDetails,
-  Command,
+  ErrorWithMessage,
+  MessageResponse,
+  PersonResponse,
+  WebexInfo,
 } from './interfaces/webex-types';
 import { WebexCommands } from './webex-commands';
 
@@ -33,7 +36,10 @@ export class WebexBotService implements OnModuleInit {
     this.logger.log(`봇 초기화 - 토큰: ${config.token ? '설정됨' : '없음'}`);
     this.logger.log(`봇 초기화 - Webhook URL: ${config.webhookUrl}`);
 
-    this.framework = new Framework(config);
+    // 타입 안전하게 프레임워크 초기화
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+    const frameworkInstance = new Framework(config);
+    this.framework = frameworkInstance as unknown as WebexFramework;
   }
 
   onModuleInit() {
@@ -46,7 +52,7 @@ export class WebexBotService implements OnModuleInit {
       .then(() => {
         this.logger.log('Webex Bot 프레임워크가 시작되었습니다.');
       })
-      .catch((err) => {
+      .catch((err: ErrorWithMessage) => {
         this.logger.error(`Webex Bot 프레임워크 시작 실패: ${err.message}`);
       });
   }
@@ -60,15 +66,21 @@ export class WebexBotService implements OnModuleInit {
     for (const command of commands) {
       this.framework.hears(
         command.pattern,
-        async (bot: Bot, trigger: Trigger) => {
-          try {
-            await command.execute(bot, trigger);
-          } catch (error) {
-            this.logger.error(
-              `명령어 실행 오류 (${command.helpText}): ${error.message}`,
-            );
-            await bot.say('명령어 처리 중 오류가 발생했습니다.');
-          }
+        // Promise를 반환하지 않도록 수정
+        (bot: Bot, trigger: Trigger) => {
+          // 비동기 처리를 void 컨텍스트에서 처리
+          void (async () => {
+            try {
+              await command.execute(bot, trigger);
+            } catch (error) {
+              // 에러 객체 타입 처리
+              const err = error as ErrorWithMessage;
+              this.logger.error(
+                `명령어 실행 오류 (${command.helpText}): ${err.message}`,
+              );
+              await bot.say('명령어 처리 중 오류가 발생했습니다.');
+            }
+          })();
         },
         command.helpText,
         command.priority,
@@ -93,15 +105,20 @@ export class WebexBotService implements OnModuleInit {
     });
 
     // 에러 이벤트 핸들러
-    this.framework.on('error', (err) => {
+    this.framework.on('error', (err: ErrorWithMessage) => {
       this.logger.error(`프레임워크 에러: ${err.message}`);
     });
 
     // 스파크 클라이언트 에러 핸들러
-    this.framework.on('spawn', (bot, framework, info) => {
-      this.logger.log(
-        `새로운 Bot 객체 생성됨, 사용자: ${info.personDisplayName}`,
-      );
+    this.framework.on('spawn', (bot, framework, info: WebexInfo) => {
+      // info 객체가 존재하고 personDisplayName 속성이 있는 경우에만 로그 출력
+      if (info?.personDisplayName) {
+        this.logger.log(
+          `새로운 Bot 객체 생성됨, 사용자: ${info.personDisplayName}`,
+        );
+      } else {
+        this.logger.log('새로운 Bot 객체 생성됨');
+      }
     });
   }
 
@@ -148,7 +165,7 @@ export class WebexBotService implements OnModuleInit {
         };
 
         const bot: Bot = {
-          say: async (message) => {
+          say: async (message): Promise<MessageResponse> => {
             return this.sendMessage(webhookData.data.roomId, message);
           },
           room: {
@@ -162,29 +179,34 @@ export class WebexBotService implements OnModuleInit {
           await command.execute(bot, trigger);
           return { status: 'success' };
         } catch (error) {
-          this.logger.error(`명령어 실행 오류: ${error.message}`);
+          const err = error as ErrorWithMessage;
+          this.logger.error(`명령어 실행 오류: ${err.message}`);
           await bot.say('명령어 처리 중 오류가 발생했습니다.');
-          return { status: 'error', error: error.message };
+          return { status: 'error', error: err.message };
         }
       }
 
       return { status: 'ignored' };
     } catch (error) {
-      this.logger.error(`Webhook 처리 오류: ${error.message}`);
-      return { status: 'error', error: error.message };
+      const err = error as ErrorWithMessage;
+      this.logger.error(`Webhook 처리 오류: ${err.message}`);
+      return { status: 'error', error: err.message };
     }
   }
 
   /**
    * 메시지 전송
    */
-  private async sendMessage(roomId: string, message: any): Promise<any> {
+  private async sendMessage(
+    roomId: string,
+    message: string | Record<string, unknown>,
+  ): Promise<MessageResponse> {
     try {
       const headers = {
         Authorization: `Bearer ${this.configService.get<string>('BOT_ACCESS_TOKEN')}`,
       };
 
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         roomId,
       };
 
@@ -194,12 +216,17 @@ export class WebexBotService implements OnModuleInit {
         payload.markdown = message;
       }
 
-      const response = await axios.post(`${this.apiUrl}/messages`, payload, {
-        headers,
-      });
+      const response = await axios.post<MessageResponse>(
+        `${this.apiUrl}/messages`,
+        payload,
+        {
+          headers,
+        },
+      );
       return response.data;
     } catch (error) {
-      this.logger.error(`메시지 전송 오류: ${error.message}`);
+      const err = error as ErrorWithMessage;
+      this.logger.error(`메시지 전송 오류: ${err.message}`);
       throw error;
     }
   }
@@ -213,16 +240,20 @@ export class WebexBotService implements OnModuleInit {
         Authorization: `Bearer ${this.configService.get<string>('BOT_ACCESS_TOKEN')}`,
       };
 
-      const response = await axios.get(`${this.apiUrl}/messages/${messageId}`, {
-        headers,
-      });
+      const response = await axios.get<MessageResponse>(
+        `${this.apiUrl}/messages/${messageId}`,
+        {
+          headers,
+        },
+      );
 
       return {
         text: response.data.text || '',
         personEmail: response.data.personEmail || '',
       };
     } catch (error) {
-      this.logger.error(`메시지 세부 정보 조회 오류: ${error.message}`);
+      const err = error as ErrorWithMessage;
+      this.logger.error(`메시지 세부 정보 조회 오류: ${err.message}`);
       throw error;
     }
   }
@@ -236,9 +267,12 @@ export class WebexBotService implements OnModuleInit {
         Authorization: `Bearer ${this.configService.get<string>('BOT_ACCESS_TOKEN')}`,
       };
 
-      const response = await axios.get(`${this.apiUrl}/people/${personId}`, {
-        headers,
-      });
+      const response = await axios.get<PersonResponse>(
+        `${this.apiUrl}/people/${personId}`,
+        {
+          headers,
+        },
+      );
 
       return {
         id: response.data.id,
@@ -251,7 +285,8 @@ export class WebexBotService implements OnModuleInit {
         created: response.data.created,
       };
     } catch (error) {
-      this.logger.error(`사용자 세부 정보 조회 오류: ${error.message}`);
+      const err = error as ErrorWithMessage;
+      this.logger.error(`사용자 세부 정보 조회 오류: ${err.message}`);
       throw error;
     }
   }

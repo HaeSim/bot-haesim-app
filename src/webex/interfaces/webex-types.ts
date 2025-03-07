@@ -1,6 +1,6 @@
 // Bot 관련 인터페이스
 export interface Bot {
-  say: (message: any) => Promise<any>;
+  say: (message: string | Record<string, unknown>) => Promise<MessageResponse>;
   room: {
     title: string;
     id?: string;
@@ -80,3 +80,39 @@ export interface Command {
 
 // Command 팩토리 타입
 export type CommandFactory = () => Command;
+
+// 에러 타입 인터페이스 추가
+export interface ErrorWithMessage {
+  message: string;
+}
+
+// 응답 타입 인터페이스 추가
+export interface WebexApiResponse<T> {
+  data: T;
+}
+
+export interface MessageResponse {
+  id: string;
+  roomId: string;
+  text?: string;
+  markdown?: string;
+  personId: string;
+  personEmail: string;
+  created: string;
+}
+
+export interface PersonResponse {
+  id: string;
+  emails: string[];
+  displayName: string;
+  firstName?: string;
+  lastName?: string;
+  avatar?: string;
+  orgId?: string;
+  created?: string;
+}
+
+// WebexInfo 타입 인터페이스 추가
+export interface WebexInfo {
+  personDisplayName: string;
+}
