@@ -1,28 +1,6 @@
 import { Controller, Post, Body, Logger } from '@nestjs/common';
-import { WebexBotService } from './webex-bot.service';
-
-interface WebhookData {
-  id: string;
-  name: string;
-  targetUrl: string;
-  resource: string;
-  event: string;
-  orgId: string;
-  createdBy: string;
-  appId: string;
-  ownedBy: string;
-  status: string;
-  created: string;
-  actorId: string;
-  data: {
-    id: string;
-    personId: string;
-    roomId: string;
-    roomType: string;
-    personEmail: string;
-    created: string;
-  };
-}
+import { WebexBotService } from './services/webex-bot.service';
+import { WebhookData } from './interfaces/webex-bot.interface';
 
 @Controller('webhook')
 export class WebexBotController {

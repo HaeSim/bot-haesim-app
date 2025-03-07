@@ -2,67 +2,18 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as Framework from 'webex-node-bot-framework';
 import axios from 'axios';
-
-// Framework 타입 정의
-interface Bot {
-  say: (message: any) => Promise<any>;
-  room: {
-    title: string;
-  };
-}
-
-interface TriggerPerson {
-  displayName: string;
-  email: string;
-}
-
-interface Trigger {
-  person: TriggerPerson;
-  text: string;
-  message: {
-    text: string;
-  };
-}
-
-interface WebhookData {
-  id: string;
-  name: string;
-  targetUrl: string;
-  resource: string;
-  event: string;
-  orgId: string;
-  createdBy: string;
-  appId: string;
-  ownedBy: string;
-  status: string;
-  created: string;
-  actorId: string;
-  data: {
-    id: string;
-    personId: string;
-    roomId: string;
-    roomType: string;
-    personEmail: string;
-    created: string;
-  };
-}
-
-interface MessageDetails {
-  text: string;
-  personEmail: string;
-}
-
-// Framework 클래스에 대한 타입 정의
-interface WebexFramework {
-  start: () => Promise<any>;
-  on: (event: string, callback: (...args: any[]) => void) => void;
-  hears: (
-    phrase: string | RegExp,
-    callback: (bot: Bot, trigger: Trigger) => void,
-    helpText?: string,
-    priority?: number,
-  ) => void;
-}
+import {
+  Bot,
+  Trigger,
+  WebexFramework,
+  WebhookData,
+  MessageDetails,
+} from '../interfaces/webex-bot.interface';
+import { CommandRegistryService } from './command-registry.service';
+import { GreetingCommand } from '../commands/greeting.command';
+import { HelpCommand } from '../commands/help.command';
+import { TimeCommand } from '../commands/time.command';
+import { DefaultCommand } from '../commands/default.command';
 
 @Injectable()
 export class WebexBotService implements OnModuleInit {
@@ -70,7 +21,14 @@ export class WebexBotService implements OnModuleInit {
   private framework: WebexFramework;
   private readonly apiUrl = 'https://webexapis.com/v1';
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private commandRegistry: CommandRegistryService,
+    private greetingCommand: GreetingCommand,
+    private helpCommand: HelpCommand,
+    private timeCommand: TimeCommand,
+    private defaultCommand: DefaultCommand,
+  ) {
     const token = this.configService.get<string>('BOT_ACCESS_TOKEN');
 
     if (!token) {
@@ -106,6 +64,9 @@ export class WebexBotService implements OnModuleInit {
   }
 
   onModuleInit() {
+    // 명령어 등록
+    this.registerCommands();
+
     // 프레임워크 시작
     this.framework
       .start()
@@ -116,6 +77,17 @@ export class WebexBotService implements OnModuleInit {
       .catch((err: Error) => {
         this.logger.error(`Webex Bot 프레임워크 시작 실패: ${err.message}`);
       });
+  }
+
+  private registerCommands() {
+    // 명령어 등록
+    this.commandRegistry.registerCommand(this.greetingCommand);
+    this.commandRegistry.registerCommand(this.helpCommand);
+    this.commandRegistry.registerCommand(this.timeCommand);
+    this.commandRegistry.registerCommand(this.defaultCommand);
+
+    // 프레임워크 설정
+    this.commandRegistry.setFramework(this.framework);
   }
 
   private setupFrameworkListeners() {
@@ -152,48 +124,6 @@ export class WebexBotService implements OnModuleInit {
         );
       }
     });
-
-    // 명령어 처리
-    this.framework.hears(
-      '안녕',
-      (bot: Bot, trigger: Trigger) => {
-        void bot.say(
-          `안녕하세요! ${trigger.person.displayName}님. 무엇을 도와드릴까요?`,
-        );
-      },
-      '**안녕** - 인사하기',
-    );
-
-    this.framework.hears(
-      '도움말',
-      (bot: Bot) => {
-        void bot.say(
-          '다음 명령어를 사용할 수 있습니다:\n- 안녕: 인사하기\n- 도움말: 도움말 보기\n- 시간: 현재 시간 확인하기',
-        );
-      },
-      '**도움말** - 사용 가능한 명령어 확인',
-    );
-
-    this.framework.hears(
-      '시간',
-      (bot: Bot) => {
-        const now = new Date();
-        void bot.say(`현재 시간은 ${now.toLocaleString('ko-KR')} 입니다.`);
-      },
-      '**시간** - 현재 시간 확인',
-    );
-
-    // 예상치 못한 입력 처리
-    this.framework.hears(
-      /.*/,
-      (bot: Bot) => {
-        void bot.say(
-          '죄송합니다. 이해하지 못했습니다. "도움말"을 입력하시면 사용 가능한 명령어를 확인할 수 있습니다.',
-        );
-      },
-      undefined,
-      99999,
-    );
   }
 
   async processWebhook(webhookData: WebhookData): Promise<any> {
@@ -223,7 +153,7 @@ export class WebexBotService implements OnModuleInit {
         `${this.apiUrl}/messages`,
         {
           roomId: webhookData.data.roomId,
-          text: this.generateResponse(messageDetails.text),
+          text: this.commandRegistry.generateResponse(messageDetails.text),
         },
         {
           headers: {
@@ -243,22 +173,6 @@ export class WebexBotService implements OnModuleInit {
       }
 
       throw error;
-    }
-  }
-
-  private generateResponse(message: string): string {
-    // 간단한 응답 로직
-    message = message.trim().toLowerCase();
-
-    if (message.includes('안녕')) {
-      return '안녕하세요! 무엇을 도와드릴까요?';
-    } else if (message.includes('도움말')) {
-      return '다음 명령어를 사용할 수 있습니다:\n- 안녕: 인사하기\n- 도움말: 도움말 보기\n- 시간: 현재 시간 확인하기';
-    } else if (message.includes('시간')) {
-      const now = new Date();
-      return `현재 시간은 ${now.toLocaleString('ko-KR')} 입니다.`;
-    } else {
-      return '죄송합니다. 이해하지 못했습니다. "도움말"을 입력하시면 사용 가능한 명령어를 확인할 수 있습니다.';
     }
   }
 
