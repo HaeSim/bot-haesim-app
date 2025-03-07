@@ -14,6 +14,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      - name: Set lowercase owner name
+        run: echo "OWNER_LOWERCASE=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -26,7 +29,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}:latest
+          tags: ghcr.io/${{ env.OWNER_LOWERCASE }}:latest
           target: production
 
       - name: Deploy to OCI instance
@@ -37,7 +40,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             # Pull the latest image
-            docker pull ghcr.io/${{ github.repository_owner }}:latest
+            docker pull ghcr.io/${{ env.OWNER_LOWERCASE }}:latest
 
             # Stop the existing container if it exists
             docker stop bot-haesim-app || true
@@ -47,7 +50,7 @@ jobs:
             docker run -d --name bot-haesim-app \
               -p 3000:3000 \
               --restart unless-stopped \
-              ghcr.io/${{ github.repository_owner }}:latest
+              ghcr.io/${{ env.OWNER_LOWERCASE }}:latest
 
             # Cleanup unused images
             docker image prune -a -f --filter "until=24h"
