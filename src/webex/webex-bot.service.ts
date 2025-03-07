@@ -78,6 +78,14 @@ export class WebexBotService implements OnModuleInit {
       throw new Error('BOT_ACCESS_TOKEN 환경 변수가 필요합니다.');
     }
 
+    // 봇 ID 로깅
+    const botId = this.configService.get<string>('BOT_ID');
+    this.logger.log(`설정된 BOT_ID: ${botId || '설정되지 않음'}`);
+
+    // 도메인 설정 로깅
+    const domainName = this.configService.get<string>('DOMAIN_NAME');
+    this.logger.log(`설정된 DOMAIN_NAME: ${domainName || '설정되지 않음'}`);
+
     // Framework 설정
     const config = {
       token: token,
@@ -86,6 +94,8 @@ export class WebexBotService implements OnModuleInit {
         : undefined,
       // Webhook을 사용하지 않고 웹소켓 사용 시에는 webhookUrl을 제공하지 않습니다
     };
+
+    this.logger.log(`Webhook URL: ${config.webhookUrl || '웹소켓 모드 사용'}`);
 
     // Framework 인스턴스 생성 시 타입 캐스팅
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -101,6 +111,7 @@ export class WebexBotService implements OnModuleInit {
       .start()
       .then(() => {
         this.logger.log('Webex Bot 프레임워크가 시작되었습니다.');
+        this.logger.log(`봇 ID: ${this.configService.get<string>('BOT_ID')}`);
       })
       .catch((err: Error) => {
         this.logger.error(`Webex Bot 프레임워크 시작 실패: ${err.message}`);
@@ -111,6 +122,22 @@ export class WebexBotService implements OnModuleInit {
     // 초기화 완료 이벤트
     this.framework.on('initialized', () => {
       this.logger.log('프레임워크가 성공적으로 초기화되었습니다!');
+    });
+
+    // 디버깅을 위한 추가 이벤트 리스너
+    this.framework.on('log', (msg: string) => {
+      this.logger.log(`Framework 로그: ${msg}`);
+    });
+
+    this.framework.on('error', (err: Error) => {
+      this.logger.error(`Framework 오류: ${err.message}`);
+    });
+
+    // 메시지 이벤트 추가
+    this.framework.on('message', (bot: Bot, trigger: Trigger) => {
+      this.logger.log(
+        `새 메시지 수신: ${trigger.text} (발신자: ${trigger.person.email})`,
+      );
     });
 
     // 스페이스에 봇이 추가될 때 이벤트
@@ -175,10 +202,25 @@ export class WebexBotService implements OnModuleInit {
     try {
       // 봇 자신이 보낸 메시지는 처리하지 않음
       const botId = this.configService.get<string>('BOT_ID');
+      this.logger.log(`메시지 발신자 ID: ${webhookData.data.personId}`);
+      this.logger.log(`봇 ID: ${botId}`);
+
       if (webhookData.data.personId === botId) {
+        this.logger.log('봇 자신이 보낸 메시지 무시');
         return { status: 'ignored_bot_message' };
       }
 
+      // 웹훅 데이터 상세 로깅
+      this.logger.log(`처리 중인 메시지 ID: ${webhookData.data.id}`);
+      this.logger.log(`메시지 룸 ID: ${webhookData.data.roomId}`);
+      this.logger.log(`발신자 이메일: ${webhookData.data.personEmail}`);
+
+      // Framework가 이미 메시지를 처리하므로 여기서 직접 처리하지 않음
+      this.logger.log('메시지 처리를 Framework로 위임');
+      return { status: 'forwarded_to_framework' };
+
+      // 아래 코드 주석 처리 (기존 직접 응답 코드)
+      /*
       // 메시지 ID를 사용하여 메시지 세부 정보 조회
       const messageDetails = await this.getMessageDetails(webhookData.data.id);
       this.logger.log(`메시지 내용: ${messageDetails.text}`);
@@ -197,11 +239,13 @@ export class WebexBotService implements OnModuleInit {
           },
         },
       );
+      */
 
-      return { status: 'success' };
+      // return { status: 'success' };
     } catch (error: unknown) {
       const err = error as Error;
       this.logger.error(`웹훅 처리 중 오류 발생: ${err.message}`);
+      this.logger.error(`오류 스택: ${(err as any).stack}`);
       throw error;
     }
   }

@@ -24,6 +24,15 @@ jobs:
           echo "OWNER_LOWERCASE=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
           echo "REPO_LOWERCASE=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]' | cut -d'/' -f2)" >> $GITHUB_ENV
 
+      # Docker 캐시 설정
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -39,6 +48,15 @@ jobs:
           tags: ghcr.io/${{ env.OWNER_LOWERCASE }}/${{ env.REPO_LOWERCASE }}:latest
           target: production
           platforms: linux/amd64,linux/arm64
+          # 캐싱 설정 추가
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      # 캐시 업데이트 (이름 변경)
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
       - name: Deploy to OCI instance
         uses: appleboy/ssh-action@master
