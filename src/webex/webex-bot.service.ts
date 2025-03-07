@@ -200,22 +200,19 @@ export class WebexBotService implements OnModuleInit {
     this.logger.log(`웹훅 처리: ${JSON.stringify(webhookData)}`);
 
     try {
-      // 봇 자신이 보낸 메시지는 처리하지 않음
-      const botId = this.configService.get<string>('BOT_ID');
+      // 메시지 발신자 로깅
       this.logger.log(`메시지 발신자 ID: ${webhookData.data.personId}`);
-      this.logger.log(`봇 ID: ${botId}`);
-
-      if (webhookData.data.personId === botId) {
-        this.logger.log('봇 자신이 보낸 메시지 무시');
-        return { status: 'ignored_bot_message' };
-      }
-
-      // 웹훅 데이터 상세 로깅
+      this.logger.log(`봇 ID: ${this.configService.get<string>('BOT_ID')}`);
       this.logger.log(`처리 중인 메시지 ID: ${webhookData.data.id}`);
       this.logger.log(`메시지 룸 ID: ${webhookData.data.roomId}`);
       this.logger.log(`발신자 이메일: ${webhookData.data.personEmail}`);
 
-      // Framework가 제대로 처리하지 못하므로 직접 처리
+      // 봇이 보낸 메시지인지 확인 (이메일로 체크)
+      if (webhookData.data.personEmail.endsWith('@webex.bot')) {
+        this.logger.log('봇이 보낸 메시지이므로 무시합니다.');
+        return { status: 'ignored_bot_message' };
+      }
+
       // 메시지 ID를 사용하여 메시지 세부 정보 조회
       const messageDetails = await this.getMessageDetails(webhookData.data.id);
       this.logger.log(`메시지 내용: ${messageDetails.text}`);
@@ -239,7 +236,12 @@ export class WebexBotService implements OnModuleInit {
     } catch (error: unknown) {
       const err = error as Error;
       this.logger.error(`웹훅 처리 중 오류 발생: ${err.message}`);
-      this.logger.error(`오류 스택: ${(err as any).stack}`);
+
+      // 타입 안전한 방식으로 스택 접근
+      if ('stack' in err) {
+        this.logger.error(`오류 스택: ${err.stack}`);
+      }
+
       throw error;
     }
   }
