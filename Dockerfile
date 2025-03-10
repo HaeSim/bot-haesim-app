@@ -1,5 +1,8 @@
 FROM node:23.7.0-alpine AS development
 
+# Oracle 클라이언트 의존성 설치
+RUN apk add --no-cache libaio libc6-compat
+
 # 작업 디렉토리 설정
 WORKDIR /usr/src/app
 
@@ -14,6 +17,9 @@ COPY . .
 RUN yarn build
 
 FROM node:23.7.0-alpine AS production
+
+# Oracle 클라이언트 의존성 설치
+RUN apk add --no-cache libaio libc6-compat
 
 # 노드 환경 설정
 ARG NODE_ENV=production

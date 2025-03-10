@@ -4,13 +4,14 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthController } from './health/health.controller';
 import { WebexBotModule } from './webex/webex-bot.module';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    DatabaseModule,
     WebexBotModule,
   ],
   controllers: [AppController, HealthController],

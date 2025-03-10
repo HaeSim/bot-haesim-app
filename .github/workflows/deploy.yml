@@ -83,6 +83,9 @@ jobs:
               -e BOT_NAME="${{ secrets.BOT_NAME }}" \
               -e BOT_USERNAME="${{ secrets.BOT_USERNAME }}" \
               -e BOT_ID="${{ secrets.BOT_ID }}" \
+              -e DB_USERNAME="ADMIN" \
+              -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+              -e NODE_ENV="production" \
               ghcr.io/${{ env.OWNER_LOWERCASE }}/${{ env.REPO_LOWERCASE }}:latest
 
             # Cleanup unused images
