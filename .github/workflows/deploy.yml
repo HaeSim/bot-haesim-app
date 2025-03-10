@@ -73,6 +73,7 @@ jobs:
             docker rm bot-haesim-app || true
 
             # Run the new container with platform 명시 and environment variables
+            # docker run 명령 부분 수정
             docker run -d --name bot-haesim-app \
               --platform linux/arm64 \
               -p 3000:3000 \

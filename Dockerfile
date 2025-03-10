@@ -1,42 +1,54 @@
 FROM node:23.7.0-alpine AS development
 
-# Oracle 클라이언트 의존성 설치
-RUN apk add --no-cache libaio libc6-compat
+# Oracle Instant Client 설치 (TLS 지원 버전)
+RUN apk --no-cache add libaio libc6-compat curl unzip
+
+# Oracle Instant Client 21.5 이상 버전 설치 (ARM64 호환)
+RUN curl -o /tmp/instantclient.zip https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linuxx64.zip && \
+    unzip /tmp/instantclient.zip -d /opt && \
+    rm /tmp/instantclient.zip && \
+    ln -s /opt/instantclient* /opt/instantclient && \
+    echo /opt/instantclient > /etc/ld.so.conf.d/oracle-instantclient.conf && \
+    ldconfig /opt/instantclient || true
+
+# 환경 변수 설정
+ENV LD_LIBRARY_PATH=/opt/instantclient
 
 # 작업 디렉토리 설정
 WORKDIR /usr/src/app
 
-# 패키지 파일 복사 및 의존성 설치
+# 패키지 설치 및 애플리케이션 빌드
 COPY package.json yarn.lock ./
 RUN yarn install
 
-# 소스 코드 복사
 COPY . .
-
-# 애플리케이션 빌드
 RUN yarn build
 
+# 프로덕션 이미지 구성
 FROM node:23.7.0-alpine AS production
 
-# Oracle 클라이언트 의존성 설치
-RUN apk add --no-cache libaio libc6-compat
+# Oracle Instant Client 설치 (TLS 지원 버전)
+RUN apk --no-cache add libaio libc6-compat curl unzip
 
-# 노드 환경 설정
-ARG NODE_ENV=production
-ENV NODE_ENV=${NODE_ENV}
+# Oracle Instant Client 21.5 이상 버전 설치 (ARM64 호환)
+RUN curl -o /tmp/instantclient.zip https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linuxx64.zip && \
+    unzip /tmp/instantclient.zip -d /opt && \
+    rm /tmp/instantclient.zip && \
+    ln -s /opt/instantclient* /opt/instantclient && \
+    echo /opt/instantclient > /etc/ld.so.conf.d/oracle-instantclient.conf && \
+    ldconfig /opt/instantclient || true
 
-# 작업 디렉토리 설정
+# 환경 변수 설정
+ENV LD_LIBRARY_PATH=/opt/instantclient
+ENV NODE_ENV=production
+
 WORKDIR /usr/src/app
 
-# 패키지 파일 복사 및 프로덕션 의존성만 설치
 COPY package.json yarn.lock ./
 RUN yarn install --production
 
-# 빌드된 애플리케이션 복사
 COPY --from=development /usr/src/app/dist ./dist
 
-# 포트 노출
 EXPOSE 3000
 
-# 애플리케이션 실행
 CMD ["node", "dist/main"]
