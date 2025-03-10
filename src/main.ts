@@ -1,5 +1,5 @@
 // 가장 먼저 패치 파일을 가져옵니다
-import './webex-patch';
+import './webex/webex-patch';
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -16,6 +16,6 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
 
   await app.listen(port);
-  console.log(`애플리케이션 실행 중: http://localhost:${port}`);
+  console.log(`애플리케이션이 포트 ${port}에서 실행 중입니다.`);
 }
 void bootstrap();

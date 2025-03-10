@@ -57,6 +57,7 @@ export interface WebexFramework {
     helpText?: string,
     priority?: number,
   ) => void;
+  getBotInfo: () => Promise<BotInfo>;
 }
 
 export interface PersonDetails {
@@ -115,4 +116,11 @@ export interface PersonResponse {
 // WebexInfo 타입 인터페이스 추가
 export interface WebexInfo {
   personDisplayName: string;
+}
+
+// BotInfo 인터페이스 추가
+export interface BotInfo {
+  emails: string[];
+  displayName: string;
+  id: string;
 }

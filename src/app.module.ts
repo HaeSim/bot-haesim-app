@@ -1,20 +1,21 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { HealthController } from './health/health.controller';
-import { WebexBotModule } from './webex/webex-bot.module';
 import { DatabaseModule } from './database/database.module';
+import { ConfigModule } from './config/config.module';
+import { MessagesModule } from './messages/messages.module';
+import { WebexModule } from './webex/webex.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
+    ConfigModule,
     DatabaseModule,
-    WebexBotModule,
+    MessagesModule,
+    WebexModule,
+    HealthModule,
   ],
-  controllers: [AppController, HealthController],
+  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
