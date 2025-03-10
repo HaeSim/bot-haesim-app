@@ -1,156 +1,152 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Bot Haesim App (해심 봇 애플리케이션)
 
-# Bot Haesim 어플리케이션
+## 프로젝트 개요
 
-이 애플리케이션은 Webex 메시징 플랫폼을 위한 봇 서비스입니다.
+해심 봇 애플리케이션은 Webex 메시징 플랫폼에서 작동하는 대화형 봇 서비스입니다. 이 봇은 다양한 명령어를 처리하고 메시지를 저장하는 기능을 제공합니다.
+
+## 기술 스택
+
+- **백엔드**: NestJS (Node.js 프레임워크)
+- **데이터베이스**: Oracle Cloud Database
+- **API 통합**: Webex Bot Framework
+- **의존성 관리**: npm/yarn
+
+## 아키텍처 구조
+
+이 애플리케이션은 모듈화된 NestJS 아키텍처를 기반으로 설계되었습니다.
+
+### 핵심 모듈
+
+#### 1. App 모듈 (`app.module.ts`)
+
+- 애플리케이션의 루트 모듈로 모든 하위 모듈을 통합합니다.
+- 서비스 구성 및 종속성 주입을 관리합니다.
+
+#### 2. Config 모듈 (`config.module.ts`, `config.service.ts`)
+
+- 환경 변수 및 구성 설정을 관리합니다.
+- NestJS의 ConfigService를 래핑하여 간단한 구성 액세스를 제공합니다.
+
+#### 3. Database 모듈 (`database.module.ts`)
+
+- TypeORM을 사용하여 Oracle 데이터베이스 연결을 관리합니다.
+- TLS를 통한 안전한 데이터베이스 연결을 설정합니다.
+
+#### 4. Messages 모듈 (`messages.module.ts`, `messages.service.ts`)
+
+- 메시지 생성, 조회 및 관리 기능을 제공합니다.
+- `Message` 엔티티를 사용하여 메시지 데이터를 저장합니다.
+
+#### 5. Webex 모듈 (`webex.module.ts`)
+
+- Webex API 통합을 관리합니다.
+- 아래 두 개의 하위 모듈을 포함합니다:
+  - **Bot 모듈** (`bot.module.ts`, `bot.service.ts`, `bot.controller.ts`): Webex 봇 프레임워크 연동 및 메시지 처리
+  - **Commands 모듈** (`commands.module.ts`, `commands.service.ts`): 봇 명령어 정의 및 처리
+
+#### 6. Health 모듈 (`health.module.ts`, `health.controller.ts`)
+
+- 애플리케이션 상태 모니터링을 위한 헬스 체크 엔드포인트를 제공합니다.
+
+### 공통 컴포넌트 (`common/`)
+
+- **Constants**: 애플리케이션 상수 정의
+- **Decorators**: 사용자 정의 데코레이터
+- **Filters**: 예외 처리를 위한 HTTP 예외 필터
+- **Guards**: 인증 및 권한 가드
+- **Interceptors**: 로깅 및 요청/응답 변환을 위한 인터셉터
+- **Middleware**: 로깅 미들웨어
+- **Utils**: 날짜 유틸리티 등 공통 기능
+
+## 주요 기능
+
+### 1. Webex 봇 통합
+
+- Webex API를 통한 메시지 수신 및 발신
+- 웹훅을 통한 실시간 이벤트 처리
+
+### 2. 명령어 처리 시스템
+
+- 패턴 매칭을 통한 명령어 인식 및 실행
+- 우선순위 기반 명령어 처리
+
+### 3. 기본 제공 명령어
+
+- `/도움말`, `/help`: 사용 가능한 명령어 목록 표시
+- `/에코`, `/echo`: 입력한 텍스트 반복
+- 인사 명령어 (`안녕`, `hello`, `hi`)
+- `/히스토리`, `/history`: 대화방 메시지 기록 표시
+- `/저장`, `/save`: 메시지 데이터베이스 저장
+
+### 4. 데이터베이스 통합
+
+- 메시지 영구 저장 및 조회
+- Oracle Cloud Database 연동
+
+## 파일 구조
+
+```shell
+src/
+ ┣ common/                 # 공통 유틸리티 및 헬퍼
+ ┃ ┣ constants/           # 상수 정의
+ ┃ ┣ decorators/          # 사용자 정의 데코레이터
+ ┃ ┣ filters/             # 예외 필터
+ ┃ ┣ guards/              # 인증 가드
+ ┃ ┣ interceptors/        # 로깅 인터셉터
+ ┃ ┣ middleware/          # 미들웨어
+ ┃ ┗ utils/               # 유틸리티 함수
+ ┣ config/                # 환경 설정
+ ┣ database/              # 데이터베이스 연결 설정
+ ┣ health/                # 헬스 체크 엔드포인트
+ ┣ messages/              # 메시지 관리
+ ┃ ┣ dto/                 # 데이터 전송 객체
+ ┃ ┗ entities/            # 데이터베이스 엔티티
+ ┣ webex/                 # Webex 통합
+ ┃ ┣ bot/                 # 봇 서비스
+ ┃ ┣ commands/            # 명령어 처리
+ ┃ ┗ interfaces/          # 타입 정의
+ ┣ app.module.ts          # 루트 모듈
+ ┗ main.ts                # 애플리케이션 진입점
+```
+
+## 데이터 모델
+
+### Message 엔티티
+
+- **ID**: 기본 키
+- **TEXT**: 메시지 내용
+- **userId**: 사용자 식별자
+- **roomId**: 메시지가 발생한 대화방 ID
+- **createdAt**: 생성 타임스탬프
 
 ## 설치 및 실행
 
-### 기본 설정
+### 1. 의존성 설치
 
-```bash
-# 의존성 설치
-$ yarn install
-
-# 개발 모드로 실행
-$ yarn run start:dev
-
-# 프로덕션 모드로 빌드
-$ yarn run build
-
-# 프로덕션 모드로 실행
-$ yarn run start:prod
+```shell
+npm install
 ```
 
-### Docker를 이용한 개발 환경 설정
+### 2. 환경 변수 설정
 
-이 프로젝트는 Docker와 Docker Compose를 사용하여 개발 환경을 쉽게 구성할 수 있습니다.
-
-#### 사전 요구사항
-
-- [Docker](https://docs.docker.com/get-docker/) 설치
-- [Docker Compose](https://docs.docker.com/compose/install/) 설치
-
-#### 환경 변수 설정
-
-1. 프로젝트 루트에 `.env` 파일 생성:
-
-```
-NODE_ENV=development
-DB_USERNAME=ADMIN
-DB_PASSWORD=<오라클 데이터베이스 비밀번호>
+```shell
+# .env 파일 생성
+BOT_ACCESS_TOKEN=your_webex_bot_token
+DOMAIN_NAME=your_app_domain
+DB_USERNAME=your_db_username
+DB_PASSWORD=your_db_password
 ```
 
-#### Docker 개발 환경 실행
+### 3. 애플리케이션 실행
 
-```bash
-# Docker 컨테이너 빌드 및 실행
-$ docker-compose up -d
+```shell
+# 개발 모드
+npm run start:dev
 
-# 로그 확인
-$ docker-compose logs -f
-
-# 컨테이너 중지
-$ docker-compose down
+# 프로덕션 모드
+npm run start:prod
 ```
 
-#### 개발 중 변경사항 적용
+## 배포
 
-Docker Compose 설정에서 볼륨 마운트를 통해 로컬 파일 변경사항이 컨테이너 내부에 자동으로 반영됩니다. 코드 변경 시 NestJS의 핫 리로딩 기능을 통해 서버가 자동으로 재시작됩니다.
-
-### 개발 중 테스트
-
-애플리케이션이 실행되면 다음 엔드포인트로 접근할 수 있습니다:
-
-- API 서버: http://localhost:3000
-- 웹훅 엔드포인트: http://localhost:3000/webex-bot/webhook
-
-### 도커 빌드 및 배포
-
-프로덕션 환경용 도커 이미지 빌드:
-
-```bash
-# 프로덕션 이미지 빌드
-$ docker build -t bot-haesim-app:prod --target production .
-
-# 프로덕션 이미지 실행
-$ docker run -p 3000:3000 --env-file .env bot-haesim-app:prod
-```
-
-## 테스트
-
-```bash
-# 단위 테스트
-$ yarn run test
-
-# e2e 테스트
-$ yarn run test:e2e
-
-# 테스트 커버리지
-$ yarn run test:cov
-```
-
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ yarn install -g mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+이 애플리케이션은 Docker를 사용하여 컨테이너화하여 배포할 수 있습니다. 자세한 배포 지침은 별도 문서를 참조하세요.

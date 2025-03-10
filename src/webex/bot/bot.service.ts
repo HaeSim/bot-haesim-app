@@ -123,8 +123,6 @@ export class BotService implements OnModuleInit {
         }
       })();
     });
-
-    // 기타 이벤트 리스너...
   }
 
   async processWebhook(webhookData: WebhookData): Promise<any> {
